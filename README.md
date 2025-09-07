@@ -134,6 +134,14 @@ This is necessary to ensure that all critical logic is split into non-flagged fr
 
 ---
 
+## 👤 Author
+
+- `salmontts`  
+- [github.com/salmontts](https://github.com/salmontts)
+
+---
+
+
 
 
 
