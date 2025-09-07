@@ -95,7 +95,7 @@ Some payloads need you to **manually split key functions** as separate scripts b
 ## ⚡ Results
 
 - **Original scripts**: Detected and blocked by Defender/EDR ([Image 1](invoke-powershelltcp/invokeps1tcp_1.png))
-- **SplitShellChain**: Chained execution bypasses Defender/EDR entirely ([Image 2](2.png)), granting full attacker control or silent keylogging
+- **SplitShellChain**: Chained execution bypasses Defender/EDR entirely ([Image 2](invoke-powershelltcp/invokeps1tcp_2.png)), granting full attacker control or silent keylogging
 
 ---
 
@@ -133,5 +133,6 @@ Some payloads (especially those with complex logic, e.g., keyloggers or reverse 
 This is necessary to ensure that all critical logic is split into non-flagged fragments and each `.ps1` file remains simple enough to evade detection.
 
 ---
+
 
 
