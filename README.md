@@ -17,10 +17,10 @@ The core of this method is **dot chaining**: every script fragment ends with `. 
 ## 🚀 Live Demo: AV Bypass in Action
 
 **Image 1: Defender blocks original reverse shell script immediately**  
-![Defender blocks original script](1.png)
+![Defender blocks original script](invoke-powershelltcp/invokeps1tcp_1.png)
 
 **Image 2: SplitShellChain payload executes reverse shell, no AV alert**  
-![SplitShellChain payload runs, AV silent](2.png)
+![SplitShellChain payload runs, AV silent](invoke-powershelltcp/invokeps1tcp_2.png)
 
 - Top left: Running `invoke-powershelltcp.ps1` — Defender blocks execution as "malicious content."
 - Bottom left: Entering `output\line001.ps1` (SplitShellChain) — *no AV alert*.
@@ -133,6 +133,7 @@ Some payloads (especially those with complex logic, e.g., keyloggers or reverse 
 This is necessary to ensure that all critical logic is split into non-flagged fragments and each `.ps1` file remains simple enough to evade detection.
 
 ---
+
 
 
 
