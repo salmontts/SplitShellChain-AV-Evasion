@@ -14,6 +14,30 @@ The core of this method is **dot chaining**: every script fragment ends with `. 
 
 ---
 
+## 🧬 About the Technique – SplitChain: Authored Logic Model Bypass
+
+**SplitShellChain/SplitChain** is a novel, self-authored method of AV/EDR bypass.  
+Unlike typical exploits or obfuscation, this approach attacks the logic model of security solutions itself.
+
+### What is SplitChain?  
+SplitChain is a method for de-integrating malicious payloads into many single-line files, executed sequentially via chaining (dot-source, `./`, pipe chaining, etc.).  
+The source code is reconstructed only at runtime, escaping detection by anti-virus heuristics that rely on file integrity, entropy, and static signatures.
+
+**This is not a known exploit, nor is it described in public research – it’s an original attack on the architecture of static and behavioral AV/EDR engines.**  
+It exposes a rare class of vulnerabilities: logic model bypasses, not traditional software bugs.
+
+> _I have not found any public documentation of this method.  
+> This project demonstrates a new bypass class: **AV logic model 0-day**._
+
+### Why is this significant?
+- Most researchers seek exploits. SplitChain redefines the execution paradigm itself.
+- Most tools automate known shellcode or payload delivery. SplitChain changes the structure of execution flow.
+- This is not about hiding code, but about changing the system’s “thinking” – shifting the attack surface to the AV’s blind spot: the file system and execution logic.
+
+**This approach opens new perspectives for red teaming, AI-assisted offensive research, and security model evaluation.**
+
+---
+
 ## 🚀 Live Demo: AV Bypass in Action
 
 **Image 1: Defender blocks original reverse shell script immediately**  
@@ -140,8 +164,3 @@ This is necessary to ensure that all critical logic is split into non-flagged fr
 - [github.com/salmontts](https://github.com/salmontts)
 
 ---
-
-
-
-
-
