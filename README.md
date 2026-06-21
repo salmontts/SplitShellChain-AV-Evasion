@@ -1,166 +1,160 @@
-# SplitShellChain-AV-Evasion-Modular-Payloads
+# SplitShellChain — badanie granic detekcji statycznej
 
-## 🧠 Executive Summary
+## TL;DR
 
-**SplitShellChain** is a modular execution technique and PoC framework for bypassing Windows Defender and EDR detection — *without obfuscation, encryption, or packing*.
+PoC pokazujący, że **ten sam payload PowerShell — wykryty jako złośliwy w jednym
+pliku — przestaje być flagowany, gdy rozbić go na łańcuch jednoliniowych
+fragmentów łączonych przez dot-sourcing.** Kod się nie zmienia; zmienia się
+*sposób* jego dostarczenia. To praktyczna ilustracja fundamentalnego
+ograniczenia detekcji statycznej opartej na sygnaturach per-plik — i argument
+za tym, dlaczego nowoczesna obrona musi działać w warstwie runtime (AMSI, EDR
+behawioralny).
 
-By slicing malicious PowerShell payloads (such as reverse shells and keyloggers) into harmless-looking fragments, it defeats both static and heuristic AV signatures.  
-The core of this method is **dot chaining**: every script fragment ends with `. .\nextfile.ps1`, so execution seamlessly flows through the chain, but escapes Defender's detection logic.
-
-**This repo demonstrates:**
-- Defender-blocked payloads (reverse shell, keylogger)
-- The same logic, split and chained, *fully bypassing* AV/EDR
-- Automation for splitting any PowerShell script
-
----
-
-## 🧬 About the Technique – SplitChain: Authored Logic Model Bypass
-
-**SplitShellChain/SplitChain** is a novel, self-authored method of AV/EDR bypass.  
-Unlike typical exploits or obfuscation, this approach attacks the logic model of security solutions itself.
-
-### What is SplitChain?  
-SplitChain is a method for de-integrating malicious payloads into many single-line files, executed sequentially via chaining (dot-source, `./`, pipe chaining, etc.).  
-The source code is reconstructed only at runtime, escaping detection by anti-virus heuristics that rely on file integrity, entropy, and static signatures.
-
-**This is not a known exploit, nor is it described in public research – it’s an original attack on the architecture of static and behavioral AV/EDR engines.**  
-It exposes a rare class of vulnerabilities: logic model bypasses, not traditional software bugs.
-
-> _I have not found any public documentation of this method.  
-> This project demonstrates a new bypass class: **AV logic model 0-day**._
-
-### Why is this significant?
-- Most researchers seek exploits. SplitChain redefines the execution paradigm itself.
-- Most tools automate known shellcode or payload delivery. SplitChain changes the structure of execution flow.
-- This is not about hiding code, but about changing the system’s “thinking” – shifting the attack surface to the AV’s blind spot: the file system and execution logic.
-
-**This approach opens new perspectives for red teaming, AI-assisted offensive research, and security model evaluation.**
+> ⚠️ Materiał badawczo-edukacyjny. Reverse shell i keylogger to publicznie
+> dostępne payloady użyte jako próbki testowe. Uruchamiać wyłącznie we własnym,
+> izolowanym labie.
 
 ---
 
-## 🚀 Live Demo: AV Bypass in Action
+## Co to faktycznie pokazuje (uczciwie)
 
-**Image 1: Defender blocks original reverse shell script immediately**  
-![Defender blocks original script](invoke-powershelltcp/invokeps1tcp_1.png)
+To **nie jest 0-day ani nieznana technika.** Dzielenie payloadu i dot-sourcing
+to znana rodzina metod obfuskacji (MITRE **T1027** — Obfuscated/Compressed
+Files, **T1059.001** — PowerShell). Defenderzy znają ją od lat.
 
-**Image 2: SplitShellChain payload executes reverse shell, no AV alert**  
-![SplitShellChain payload runs, AV silent](invoke-powershelltcp/invokeps1tcp_2.png)
+**Mój wkład** to nie odkrycie techniki, tylko:
+1. **Automatyzacja** — `shellsplitter.py` tnie dowolny skrypt PowerShell na
+   fragmenty z poprawną obsługą bloków (here-stringi, try/catch, balansowanie
+   nawiasów), generuje łańcuch i runner.
+2. **Czysta demonstracja eksperymentalna** — ten sam payload, dwa sposoby
+   wykonania, udokumentowana różnica w detekcji. Kontrolowany eksperyment, nie
+   przypadkowy bypass.
+3. **Analiza *dlaczego* to działa** — i co to znaczy dla obrony (niżej).
 
-- Top left: Running `invoke-powershelltcp.ps1` — Defender blocks execution as "malicious content."
-- Bottom left: Entering `output\line001.ps1` (SplitShellChain) — *no AV alert*.
-- Right: Attacker's netcat session — full shell access (whoami, ipconfig, etc.) with Defender enabled.
-- OBS capture confirms real-time, real-world test.
-
----
-
-## 📂 Folder Structure
-
-```
-SplitShellChain-AV-Evasion-Modular-Payloads
-│
-├── shellsplitter.py          # Main script for splitting payloads
-│
-├── invoke-powershelltcp/
-│   ├── invoke-powershelltcp.ps1  # Original (blocked) reverse shell
-│   ├── output/
-│   │   ├── line001.ps1 ... line033.ps1  # Chained fragments
-│   │   ├── receiver.ps1 / executor.ps1 / responder.ps1
-│   ├── Screenshots/1.png, 2.png        # Demo images
-│
-└── keylogger/
-    ├── keylogger.ps1         # Original (blocked) keylogger
-    └── output/
-        ├── line001.ps1 ... line010.ps1  # Chained fragments
-        ├── keyloop.ps1, keytranslate.ps1, keywrite.ps1
-```
+Wartość tej pracy jest w **zrozumieniu granicy detekcji**, nie w "ominięciu
+antywirusa".
 
 ---
 
-## ✅ How It Works
+## Eksperyment
 
-Antivirus/EDR engines often flag:
-- Strings: `Invoke-Expression`, `System.Text.Encoding`, suspicious prompts, etc.
-- Behavioral patterns: command chain, socket, keylogging, etc.
+| Wariant | Plik | Wynik |
+|---------|------|-------|
+| Oryginał (z publicznego źródła) | `invoke-powershelltcp.ps1` | 🔴 Defender blokuje natychmiast |
+| Ten sam payload, pocięty łańcuchem | `output/line001.ps1 → …` | 🟢 brak alertu, wykonanie przechodzi |
 
-**SplitShellChain defeats these by:**
-- Splitting payloads into many `.ps1` files, each one innocuous alone
-- Breaking dangerous constructs (stream, execution, logging) into separate scripts
-- Chaining via `. .\next.ps1` instead of `Start-Process` or `IEX`
-- Optional: random comments, delays, cleanup, DuckyScript launcher
+Zmienną jest **wyłącznie sposób dostarczenia.** Logika payloadu identyczna.
+To czyni z tego kontrolowany eksperyment nad zachowaniem silnika detekcji, a nie
+po prostu "działający bypass".
 
-> **Dot Chaining**:  
-> Each line of the execution chain ends with a dot-source invocation (`. .\nextfile.ps1`).  
-> This keeps execution smooth and complete, but circumvents Defender's and EDR's logic, which expects malicious code in a single file or process.  
-> The program runs as intended, yet every step is below the detection threshold.
+(Zrzuty: `invoke-powershelltcp/invokeps1tcp_1.png` — blokada oryginału;
+`invokeps1tcp_2.png` — wykonanie łańcucha.)
 
 ---
 
-## 🛠️ Usage
+## Dlaczego to działa — i dlaczego to NIE jest "bug Defendera"
 
-**Split any PowerShell payload:**
+To kluczowa część, i to ona odróżnia tę pracę od "patrzcie, ominąłem AV".
+
+Skanery statyczne analizują **pojedyncze pliki/skrypty**. Nie rekonstruują
+pełnego grafu wykonania rozłożonego na łańcuch dot-source — i **nie mogą tego
+robić w ogólności**, z trzech fundamentalnych powodów:
+
+1. **Nierozstrzygalność.** Dot-source może ładować pliki warunkowo, z sieci,
+   generowane w runtime. Żeby "skleić łańcuch w całość", skaner musiałby
+   *wykonać dowolny kod*, by wiedzieć, co się sklei. To problem zatrzymania.
+2. **Wydajność.** Pełna emulacja każdego skryptu z rozwijaniem wszystkich
+   `. .\x.ps1` byłaby zabójcza dla wydajności każdej maszyny.
+3. **Fałszywe pozytywy.** Legalne frameworki (buildy, profile PowerShell,
+   ładowanie modułów) używają dot-source dokładnie tak samo. Agresywne sklejanie
+   = zalanie użytkowników FP.
+
+Dlatego Microsoft słusznie odpowiedział, że to **nie kwalifikuje się jako bug** —
+to świadomy trade-off architektury detekcji statycznej, nie luka. I właśnie
+dlatego istnieją **warstwy runtime**:
+
+- **AMSI** (Antimalware Scan Interface) — przechwytuje kod PowerShell **w
+  momencie wykonania**, po rekonstrukcji w pamięci, niezależnie od tego, na ile
+  plików go pokrojono.
+- **EDR behawioralny** — wykrywa *zachowanie* (otwarcie socketu, hook klawiatury,
+  spawn reverse shella), nie sygnaturę pliku.
+
+Mój łańcuch omija sygnatury **statyczne** — ale dobrze skonfigurowany AMSI +
+EDR złapałby ten payload w runtime. To dowód, nie kontrprzykład, dla zasady
+**defense-in-depth**.
+
+---
+
+## 🛡️ Strona obrońcy: jak wykryć tę technikę
+
+Tu domyka się purpura. Skoro rozumiem, jak ta technika omija detekcję statyczną,
+wiem też, jak ją **złapać**:
+
+**1. AMSI jest tu kluczowe.** Niezależnie od liczby fragmentów, kod ostatecznie
+trafia do silnika skryptowego, gdzie AMSI go widzi w pełnej, zrekonstruowanej
+formie. Włączone i poprawnie skonfigurowane AMSI neutralizuje większość wartości
+tej techniki.
+
+**2. PowerShell Script Block Logging** (Event ID 4104) — loguje faktycznie
+wykonywane bloki, w tym te z dot-source. Łańcuch staje się widoczny w logach.
+
+**3. Detekcja behawioralna łańcucha:**
+- Wiele jednoliniowych `.ps1` w jednym katalogu, każdy kończący się
+  `. .\lineNNN.ps1` — to **sam w sobie sygnatura** tej techniki.
+- Sekwencyjne tworzenie/usuwanie skryptów (tryb `--cleanup`).
+- Proces PowerShell dot-source'ujący dziesiątki plików w pętli.
+
+**4. Constrained Language Mode / Execution Policy** — ograniczenie dot-source
+i wykonania nieautoryzowanych skryptów u źródła.
+
+> Sygnatura wykrywająca SAMĄ TĘ TECHNIKĘ (łańcuch dot-source jednoliniowców)
+> jest trywialna do napisania — co jest kolejnym dowodem, że to nie 0-day, tylko
+> luka w *jednej warstwie* detekcji, łatana przez inne warstwy.
+
+---
+
+## Jak działa splitter
+
+`shellsplitter.py` tnie skrypt na bloki, dbając o niełamanie struktur
+składniowych:
+- śledzi balans nawiasów `{ }` (nie tnie w środku bloku),
+- wykrywa here-stringi (`@'...'@`, `@"..."@`) i nie tnie w ich trakcie,
+- nie przerywa bloków `try/catch/finally`,
+- łączy fragmenty przez `. .\nextfile.ps1` z konfigurowalnym opóźnieniem.
+
 ```sh
-python shellsplitter.py -i keylogger.ps1 -o output --chain --runner --comments --delay 200
+python shellsplitter.py -i payload.ps1 -o output --chain --runner --delay 200
 ```
-- Launch with `. .\line001.ps1`
-- AV/EDR will not flag the execution chain
 
-### ⚠️ Manual Function Splitting Required
-
-Some payloads need you to **manually split key functions** as separate scripts before chaining, especially for complex logic:
-- In the keylogger:  
-  - `keywrite.ps1`, `keytranslate.ps1`, `keyloop.ps1` are split as standalone helper scripts.
-- In the reverse TCP shell:  
-  - `executor.ps1`, `receiver.ps1`, and `responder.ps1` are separated for modular chaining.
-- This ensures critical logic is both reusable and split enough to evade detection.  
-  If you only chain line-by-line, some AVs may still catch complex logic blocks.
+Flagi: `--chain` (łańcuch), `--runner` (generuj runner), `--cleanup` (każdy
+fragment kasuje poprzedni), `--delay` (opóźnienie ms), `--comments` (komentarze
+wypełniające), `--duckify` (launcher DuckyScript).
 
 ---
 
-## ⚡ Results
+## Struktura
 
-- **Original scripts**: Detected and blocked by Defender/EDR ([Image 1](invoke-powershelltcp/invokeps1tcp_1.png))
-- **SplitShellChain**: Chained execution bypasses Defender/EDR entirely ([Image 2](invoke-powershelltcp/invokeps1tcp_2.png)), granting full attacker control or silent keylogging
-
----
-
-## ⚙️ Requirements
-
-- Windows 10 / 11
-- PowerShell 5+
-- Python 3.x (for `shellsplitter.py`)
-
----
-
-## 🎯 Impact
-
-SplitShellChain exposes a real-world, non-obfuscation AV/EDR bypass method:
-- Bypasses Defender/EDR heuristics and static patterns
-- Enables modular payload delivery (reverse shell, keylogger, persistence)
-- Demonstrates the urgent need for better chained file execution detection
+```
+SplitShellChain-AV-Evasion/
+├── shellsplitter.py              # splitter (główne narzędzie)
+├── invoke-powershelltcp/
+│   ├── invoke-powershelltcp.ps1  # oryginał (publiczny, wykrywany)
+│   ├── output/                   # pocięty łańcuch (line001..033 + helpery)
+│   └── *.png                     # zrzuty eksperymentu
+└── keylogger/
+    ├── keylogger.ps1             # druga próbka testowa
+    └── output/                   # pocięty łańcuch
+```
 
 ---
 
-## 📢 About the Research & Disclosure
+## Disclaimer
 
-This technique was submitted to Microsoft through their bug bounty program.  
-**Microsoft responded that it does not qualify as a Defender bug** under their current criteria.  
-However, we believe this is a significant blind spot in modern AV/EDR logic and encourage the security community to **research and test** this method further.
+Materiał do nauki i autoryzowanych testów we własnym labie. Payloady (reverse
+shell, keylogger) są publicznie dostępnymi próbkami, użytymi do zademonstrowania
+różnicy w detekcji. Nie używać do nieautoryzowanego dostępu — to łamie prawo i
+regulaminy platform.
 
----
+## Autor
 
-## ⚠️ Disclaimer & Important Notes
-
-This project is intended strictly for **research, educational, and defensive purposes**.  
-Do **not** use these techniques for unauthorized access or in production environments — this may violate laws and platform policies.
-
-Some payloads (especially those with complex logic, e.g., keyloggers or reverse shells) require **manual splitting** of functional components into separate scripts before using the chain generator.  
-This is necessary to ensure that all critical logic is split into non-flagged fragments and each `.ps1` file remains simple enough to evade detection.
-
----
-
-## 👤 Author
-
-- `salmontts`  
-- [github.com/salmontts](https://github.com/salmontts)
-
----
+Sentio (`salmontts`) — Adrian Jędrocha

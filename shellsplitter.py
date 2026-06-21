@@ -3,17 +3,20 @@ import argparse
 import random
 from pathlib import Path
 
+# Komentarze-wypełniacze wstawiane między fragmenty. Cel techniczny: zwiększają
+# wariancję między plikami, co utrudnia proste dopasowanie sygnatury opartej na
+# powtarzalnej strukturze fragmentów. Treść neutralna (zwykły szum komentarzy).
 RANDOM_COMMENTS = [
-    "# robie kanapke z szynka",
-    "# to nie jest malware tylko test",
-    "# czy pies lubi zupy?",
-    "# poweruser.exe activated",
-    "# debug mode: true",
-    "# nie dotykac to moj projekt",
-    "# bardzo wazna zmienna",
-    "# czyszczenie smieci",
-    "# pole testowe do zabawy",
-    "# sprobuj czegos lepszego av"
+    "# init helper segment",
+    "# config block",
+    "# runtime checkpoint",
+    "# module loader stub",
+    "# debug marker",
+    "# state sync point",
+    "# buffer flush",
+    "# housekeeping",
+    "# segment boundary",
+    "# continuation marker"
 ]
 
 def parse_args():
